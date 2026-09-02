@@ -33,6 +33,9 @@ final class AudioEngine: @unchecked Sendable {
     /// Audio thread -> UI: output samples for the waterfall display.
     let visFIFO = SampleFIFO()
 
+    /// Demo loop selection: -1 = off, else index into `demos`. UI writes.
+    let demoSelect = Atomic<Int>(-1)
+
     // UI -> audio thread. Floats travel as bit patterns so we only need Atomic<UInt32>.
     let toneOn = Atomic<Bool>(false)
     let targetGain = Atomic<UInt32>(Float(0.2).bitPattern)
@@ -52,6 +55,12 @@ final class AudioEngine: @unchecked Sendable {
     private var pitchBend: Float = 0  // -1...1, scaled to ±2 semitones
     private var modWheel: Float = 0   // CC1, 0...1
 
+    // Demo playback (audio-thread state; `demos` is immutable after start()).
+    private var demos: [DemoSequence] = []
+    private var demoCurrent = -1
+    private var demoSample = 0
+    private var demoCursor = 0
+
     private(set) var stats = EngineStats()
 
     func start(preferredBufferFrames: UInt32 = 128) throws {
@@ -63,6 +72,7 @@ final class AudioEngine: @unchecked Sendable {
         }
         synth = PolySynth(sampleRate: sampleRate)
         fx = FXChain(sampleRate: Float(sampleRate))
+        demos = Demos.all(sampleRate: sampleRate)
 
         let node = AVAudioSourceNode(format: format) { [self] _, _, frameCount, abl -> OSStatus in
             let buffers = UnsafeMutableAudioBufferListPointer(abl)
@@ -104,6 +114,35 @@ final class AudioEngine: @unchecked Sendable {
                 if phase > 2.0 * .pi { phase -= 2.0 * .pi }
                 left[frame] = sample
                 right[frame] = sample
+            }
+
+            // Demo loop: inject sequenced notes exactly like incoming MIDI.
+            let sel = demoSelect.load(ordering: .relaxed)
+            if sel != demoCurrent {
+                synth.allNotesOff()
+                demoCurrent = sel
+                demoSample = 0
+                demoCursor = 0
+            }
+            if demoCurrent >= 0 && demoCurrent < demos.count {
+                let seq = demos[demoCurrent]
+                let windowEnd = demoSample + frames
+                while demoCursor < seq.events.count && seq.events[demoCursor].time < windowEnd {
+                    let e = seq.events[demoCursor]
+                    if e.isOn {
+                        synth.noteOn(note: e.note, velocity: e.vel)
+                        uiLastNote.store(UInt32(e.note), ordering: .relaxed)
+                        uiLastVelocity.store(e.vel.bitPattern, ordering: .relaxed)
+                    } else {
+                        synth.noteOff(note: e.note)
+                    }
+                    demoCursor += 1
+                }
+                demoSample = windowEnd
+                if demoSample >= seq.length {
+                    demoSample -= seq.length
+                    demoCursor = 0
+                }
             }
 
             let patch = params.snapshot()

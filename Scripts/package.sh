@@ -16,6 +16,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp .build/release/LadderApp "$APP/Contents/MacOS/LadderApp"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# SPM resource bundle (fonts); Bundle.module finds it in Contents/Resources.
+cp -R .build/release/Ladder_LadderApp.bundle "$APP/Contents/Resources/"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>

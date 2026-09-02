@@ -8,6 +8,7 @@ let package = Package(
         .executableTarget(
             name: "LadderApp",
             path: "Sources/LadderApp",
+            resources: [.copy("Resources")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]

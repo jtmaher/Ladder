@@ -10,6 +10,11 @@ enum Theme {
     static let green = Color(red: 0.3, green: 1.0, blue: 0.65)
     static let yellow = Color(red: 1.0, green: 0.86, blue: 0.3)
     static let textDim = Color.white.opacity(0.5)
+
+    /// Segmented 14-seg LED display font (DSEG14 Classic).
+    static func led(_ size: CGFloat) -> Font {
+        .custom("DSEG14Classic-Regular", size: size)
+    }
 }
 
 /// A titled neon panel; sections sit left-to-right in signal-flow order.
@@ -42,12 +47,31 @@ struct SynthSection<Content: View>: View {
     }
 }
 
-/// Arrow between sections, marking the signal flow.
-struct FlowArrow: View {
+/// Glowing wire between sections, marking the signal flow: gradient from the
+/// upstream panel's accent into the downstream one, with pad dots at the ends.
+struct SignalWire: View {
+    var from: Color
+    var to: Color
+
     var body: some View {
-        Image(systemName: "chevron.compact.right")
-            .font(.system(size: 22, weight: .bold))
-            .foregroundStyle(Theme.textDim)
+        Canvas { ctx, size in
+            let y = size.height / 2
+            var wire = Path()
+            wire.move(to: CGPoint(x: 2, y: y))
+            wire.addLine(to: CGPoint(x: size.width - 2, y: y))
+
+            ctx.addFilter(.shadow(color: to.opacity(0.7), radius: 3))
+            ctx.stroke(wire,
+                       with: .linearGradient(Gradient(colors: [from, to]),
+                                             startPoint: CGPoint(x: 0, y: y),
+                                             endPoint: CGPoint(x: size.width, y: y)),
+                       lineWidth: 1.5)
+            ctx.fill(Path(ellipseIn: CGRect(x: 0, y: y - 2.5, width: 5, height: 5)),
+                     with: .color(from))
+            ctx.fill(Path(ellipseIn: CGRect(x: size.width - 5, y: y - 2.5, width: 5, height: 5)),
+                     with: .color(to))
+        }
+        .frame(width: 26, height: 20)
     }
 }
 

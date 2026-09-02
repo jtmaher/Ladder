@@ -47,24 +47,27 @@ struct ContentView: View {
                 )
                 .shadow(color: Theme.magenta.opacity(0.6), radius: 8)
             Text("POLYPHONIC ANALOG")
-                .font(.system(size: 9, design: .monospaced))
-                .tracking(3)
-                .foregroundStyle(Theme.textDim)
+                .font(Theme.led(9))
+                .tracking(2)
+                .foregroundStyle(Theme.green.opacity(0.8))
+                .shadow(color: Theme.green.opacity(0.7), radius: 4)
 
             Spacer()
 
             Group {
-                Label(model.midiSources.isEmpty ? "NO MIDI" : model.midiSources.joined(separator: " · "),
+                Label(model.midiSources.isEmpty ? "NO MIDI"
+                        : model.midiSources.joined(separator: " + ").uppercased(),
                       systemImage: "pianokeys")
-                Text(model.lastNoteText).bold().foregroundStyle(Theme.cyan)
-                    .frame(width: 100, alignment: .trailing)
+                Text(model.lastNoteText)
+                    .frame(width: 130, alignment: .trailing)
                 Text("\(model.activeVoices)/16")
-                    .frame(width: 38, alignment: .trailing)
-                Text("\(model.stats.totalOutputLatencyMS, format: .number.precision(.fractionLength(1))) ms")
                     .frame(width: 48, alignment: .trailing)
+                Text("\(model.stats.totalOutputLatencyMS, format: .number.precision(.fractionLength(1))) MS")
+                    .frame(width: 64, alignment: .trailing)
             }
-            .font(.system(size: 10, design: .monospaced))
-            .foregroundStyle(Theme.textDim)
+            .font(Theme.led(9))
+            .foregroundStyle(Theme.green)
+            .shadow(color: Theme.green.opacity(0.7), radius: 4)
         }
     }
 
@@ -114,6 +117,33 @@ struct ContentView: View {
                 .buttonStyle(NeonButtonStyle(accent: Theme.magenta))
 
             Spacer()
+
+            Menu {
+                Button("OFF") { model.demoIndex = -1 }
+                ForEach(Array(Demos.names.enumerated()), id: \.0) { i, name in
+                    Button(name) { model.demoIndex = i }
+                }
+            } label: {
+                let playing = model.demoIndex >= 0
+                HStack(spacing: 6) {
+                    Image(systemName: playing ? "stop.fill" : "play.fill")
+                        .font(.system(size: 8))
+                    Text(playing ? Demos.names[model.demoIndex] : "DEMO")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .tracking(1.5)
+                }
+                .foregroundStyle(Theme.green)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 5)
+                    .fill(playing ? Theme.green.opacity(0.15) : Theme.panel))
+                .overlay(RoundedRectangle(cornerRadius: 5)
+                    .stroke(Theme.green.opacity(playing ? 0.9 : 0.5), lineWidth: 1))
+                .shadow(color: playing ? Theme.green.opacity(0.6) : .clear, radius: 5)
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
 
             HStack(spacing: 4) {
                 modeButton("PLAY", .play)
@@ -240,15 +270,15 @@ struct ContentView: View {
     private var signalFlow: some View {
         HStack(alignment: .top, spacing: 4) {
             oscSection
-            FlowArrow().padding(.top, 90)
+            SignalWire(from: Theme.cyan, to: Theme.magenta).padding(.top, 90)
             filterSection
-            FlowArrow().padding(.top, 90)
+            SignalWire(from: Theme.magenta, to: Theme.purple).padding(.top, 90)
             envSection
-            FlowArrow().padding(.top, 90)
+            SignalWire(from: Theme.purple, to: Theme.yellow).padding(.top, 90)
             lfoSection
-            FlowArrow().padding(.top, 90)
+            SignalWire(from: Theme.yellow, to: Theme.orange).padding(.top, 90)
             fxSection
-            FlowArrow().padding(.top, 90)
+            SignalWire(from: Theme.orange, to: Theme.green).padding(.top, 90)
             outSection
         }
     }

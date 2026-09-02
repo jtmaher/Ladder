@@ -186,6 +186,15 @@ struct PolySynth {
         }
     }
 
+    mutating func allNotesOff() {
+        for i in 0..<Self.voiceCount where voices[i].isHeld || voices[i].sustained {
+            voices[i].isHeld = false
+            voices[i].sustained = false
+            voices[i].ampEnv.gateOff()
+            voices[i].filterEnv.gateOff()
+        }
+    }
+
     mutating func setSustain(_ down: Bool) {
         sustainDown = down
         if !down {

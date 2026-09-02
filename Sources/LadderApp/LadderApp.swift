@@ -1,8 +1,18 @@
 import SwiftUI
+import CoreText
 
 @main
 struct LadderApp: App {
     @State private var model = EngineModel()
+
+    init() {
+        // Segmented LED font (DSEG, SIL OFL) for the status displays.
+        if let url = Bundle.module.url(forResource: "DSEG14Classic-Regular",
+                                       withExtension: "ttf",
+                                       subdirectory: "Resources") {
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+    }
 
     var body: some Scene {
         WindowGroup("Ladder") {
@@ -95,6 +105,10 @@ final class EngineModel {
         }
     }
 
+    var demoIndex = -1 {
+        didSet { engine.demoSelect.store(demoIndex, ordering: .relaxed) }
+    }
+
     var toneOn = false {
         didSet { engine.toneOn.store(toneOn, ordering: .relaxed) }
     }
@@ -137,7 +151,7 @@ final class EngineModel {
                 let note = self.engine.uiLastNote.load(ordering: .relaxed)
                 let velocity = Float(bitPattern: self.engine.uiLastVelocity.load(ordering: .relaxed))
                 if note > 0 {
-                    self.lastNoteText = "\(Self.noteName(UInt8(note)))  vel \(Int(velocity * 127))"
+                    self.lastNoteText = "\(Self.noteName(UInt8(note))) VEL \(Int(velocity * 127))"
                 }
             }
         }
@@ -145,8 +159,10 @@ final class EngineModel {
         pollTimer = timer
     }
 
+    // Flats, not sharps: the segmented LED font has no '#' glyph, but its
+    // lowercase 'b' reads as a flat sign — the classic hardware-tuner trick.
     static func noteName(_ note: UInt8) -> String {
-        let names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        let names = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
         return "\(names[Int(note) % 12])\(Int(note) / 12 - 1)"
     }
 }
